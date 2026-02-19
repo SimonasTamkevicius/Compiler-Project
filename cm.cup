@@ -75,7 +75,6 @@ non terminal Exp stmt, if_stmt, repeat_stmt, assign_stmt, read_stmt, write_stmt;
 non terminal Exp exp; */
    
 terminal BOOL, IF, ELSE, INT, RETURN, VOID, WHILE, FALSE, TRUE ;
-terminal THEN, END, REPEAT, UNTIL, READ, WRITE ;
 terminal ASSIGN, EQ, LT, LE, GT, GE, NE, TILDE, OR, AND, UMINUS, COMMA, PLUS, MINUS, TIMES, OVER, LPAREN, RPAREN, SEMI, LBRACK, RBRACK, LBRACE, RBRACE;
 terminal String ID, NUM, TRUTH;
 terminal ERROR;
@@ -106,4 +105,70 @@ precedence right UMINUS;
    
 start with program;
 
-program ::= ;
+program ::= declaration_list;
+
+declaration_list ::= declaration_list declaration | declaration;
+
+declaration ::= var_declaration | fun_declaration | fun_prototype;
+
+var_declaration ::= type_specifier ID SEMI | type_specifier ID LBRACK NUM RBRACK SEMI;
+
+type_specifier ::= BOOL | INT | VOID;
+
+fun_declaration ::= type_specifier ID LPAREN params RPAREN compound_stmt;
+
+fun_prototype ::= type_specifier ID LPAREN params RPAREN SEMI;
+
+params ::= param_list | VOID;
+
+param_list ::= param_list COMMA param | param;
+
+param ::= type_specifier ID | type_specifier ID LBRACK RBRACK;
+
+compound_stmt ::= LBRACE local_declarations statement_list RBRACE;
+
+local_declarations ::= local_declarations var_declaration | ;
+
+statement_list ::= statement_list statement | ;
+
+statement ::= expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
+
+expression_stmt ::= expression SEMI | SEMI;
+
+selection_stmt ::= IF LPAREN expression RPAREN statement | IF LPAREN expression RPAREN statement ELSE statement;
+
+iteration_stmt ::= WHILE LPAREN expression RPAREN statement;
+
+return_stmt ::= RETURN expression SEMI | RETURN SEMI;
+
+expression ::= var ASSIGN expression | obool_expression;
+
+var ::= ID | ID LBRACK expression RBRACK;
+
+obool_expression ::= obool_expression OR abool_expression | abool_expression;
+
+abool_expression ::= abool_expression AND ubool_expression | ubool_expression;
+
+ubool_expression ::= TILDE ubool_expression | simple_expression;
+
+simple_expression ::= additive_expression relop additive_expression | additive_expression;
+
+relop ::= LE | LT | GT | GE | EQ | NE;
+
+additive_expression ::= additive_expression addop term | term;
+
+addop ::= PLUS | MINUS;
+
+term ::= term mulop signed_factor | signed_factor;
+
+mulop ::= TIMES | OVER;
+
+signed_factor ::= MINUS signed_factor | factor;
+
+factor ::= LPAREN expression RPAREN | var | call | NUM | TRUTH;
+
+call ::= ID LPAREN args RPAREN;
+
+args ::= arg_list | ;
+
+arg_list ::= arg_list COMMA expression | expression;
