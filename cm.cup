@@ -76,7 +76,8 @@ non terminal Exp exp; */
    
 terminal BOOL, IF, ELSE, INT, RETURN, VOID, WHILE, FALSE, TRUE ;
 terminal ASSIGN, EQ, LT, LE, GT, GE, NE, TILDE, OR, AND, UMINUS, COMMA, PLUS, MINUS, TIMES, OVER, LPAREN, RPAREN, SEMI, LBRACK, RBRACK, LBRACE, RBRACE;
-terminal String ID, NUM, TRUTH;
+terminal String ID, NUM;
+terminal IFX;
 terminal ERROR;
 
 non terminal Exp program;
@@ -90,13 +91,17 @@ non terminal Exp compound_stmt, statement, expression_stmt;
 non terminal Exp selection_stmt, iteration_stmt, return_stmt;
 
 non terminal Exp expression, var;
-non terminal Exp obool_expression, abool_expression, ubool_expression;
-non terminal Exp simple_expression, additive_expression, term;
-non terminal Exp signed_factor, factor, call, args;
+non terminal Exp call, args;
 
-non terminal Object relop, addop, mulop;
+precedence nonassoc IFX;
+precedence nonassoc ELSE;
 
-precedence nonassoc LT, LE, GT, GE, EQ;
+precedence left OR;
+precedence left AND;
+precedence right TILDE;
+
+precedence nonassoc LT, LE, GT, GE, EQ, NE;
+
 precedence left PLUS, MINUS;
 precedence left TIMES, OVER; 
 precedence right UMINUS; 
@@ -135,37 +140,20 @@ statement ::= expression_stmt | compound_stmt | selection_stmt | iteration_stmt 
 
 expression_stmt ::= expression SEMI | SEMI;
 
-selection_stmt ::= IF LPAREN expression RPAREN statement | IF LPAREN expression RPAREN statement ELSE statement;
+selection_stmt ::= IF LPAREN expression RPAREN statement %prec IFX | IF LPAREN expression RPAREN statement ELSE statement;
 
 iteration_stmt ::= WHILE LPAREN expression RPAREN statement;
 
 return_stmt ::= RETURN expression SEMI | RETURN SEMI;
 
-expression ::= var ASSIGN expression | obool_expression;
+expression ::= var ASSIGN expression | expression OR expression | expression AND expression
+      | TILDE expression | expression LT expression | expression LE expression
+      | expression GT expression | expression GE expression | expression EQ expression
+      | expression NE expression | expression PLUS expression | expression MINUS expression
+      | expression TIMES expression | expression OVER expression | MINUS expression %prec UMINUS
+      | LPAREN expression RPAREN | var | call | NUM | TRUE | FALSE;
 
 var ::= ID | ID LBRACK expression RBRACK;
-
-obool_expression ::= obool_expression OR abool_expression | abool_expression;
-
-abool_expression ::= abool_expression AND ubool_expression | ubool_expression;
-
-ubool_expression ::= TILDE ubool_expression | simple_expression;
-
-simple_expression ::= additive_expression relop additive_expression | additive_expression;
-
-relop ::= LE | LT | GT | GE | EQ | NE;
-
-additive_expression ::= additive_expression addop term | term;
-
-addop ::= PLUS | MINUS;
-
-term ::= term mulop signed_factor | signed_factor;
-
-mulop ::= TIMES | OVER;
-
-signed_factor ::= MINUS signed_factor | factor;
-
-factor ::= LPAREN expression RPAREN | var | call | NUM | TRUTH;
 
 call ::= ID LPAREN args RPAREN;
 
