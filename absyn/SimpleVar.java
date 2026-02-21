@@ -1,12 +1,12 @@
 package absyn;
 
-public class IntExp extends Exp {
-  public int value;
+public class SimpleVar extends Var {
+  public String name;
 
-  public IntExp(int row, int col, int value) {
+  public SimpleVar(int row, int col, String name) {
     this.row = row;
     this.col = col;
-    this.value = value;
+    this.name = name;
   }
 
   @Override

@@ -1,10 +1,10 @@
 package absyn;
 
-public class ExpList extends Absyn {
-  public Exp head;
-  public ExpList tail;
+public class DecList extends Absyn {
+  public Dec head;
+  public DecList tail;
 
-  public ExpList(int row, int col, Exp head, ExpList tail) {
+  public DecList(int row, int col, Dec head, DecList tail) {
     this.row = row;
     this.col = col;
     this.head = head;

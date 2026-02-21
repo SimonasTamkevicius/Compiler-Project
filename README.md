@@ -11,3 +11,7 @@ Run ```make clean``` to remove all the compiled files so you can rebuild
 (On Linux Server)
 For the scanner run:
 ```java -cp /usr/share/java/java-cup-0.11b.jar:/usr/share/java/java-cup-0.11b-runtime.jar:. Scanner < fac.cm```
+
+
+For parser and abstract syntax tree run:
+```java -cp /usr/share/java/java-cup-0.11b-runtime.jar:. Main fac.cm```

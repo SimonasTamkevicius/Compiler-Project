@@ -7,6 +7,7 @@
 /* ----------------------Preliminary Declarations Section--------------------*/
    
 import absyn.*;
+import java_cup.runtime.Symbol;
    
 /* Parser code to change the way the parser reports errors (include
    line and column number of the error). */
@@ -69,29 +70,23 @@ parser code {:
 
 /* ------------Declaration of Terminals and Non Terminals Section----------- */
 
-/* non terminal Exp program1;
-non terminal ExpList program, stmt_seq;
-non terminal Exp stmt, if_stmt, repeat_stmt, assign_stmt, read_stmt, write_stmt;
-non terminal Exp exp; */
-   
 terminal BOOL, IF, ELSE, INT, RETURN, VOID, WHILE, FALSE, TRUE ;
 terminal ASSIGN, EQ, LT, LE, GT, GE, NE, TILDE, OR, AND, UMINUS, COMMA, PLUS, MINUS, TIMES, OVER, LPAREN, RPAREN, SEMI, LBRACK, RBRACK, LBRACE, RBRACE;
 terminal String ID, NUM;
 terminal IFX;
 terminal ERROR;
 
-non terminal Exp program;
-
-non terminal ExpList declaration_list, local_declarations, statement_list, arg_list, param_list;
-
-non terminal Exp declaration, var_declaration, fun_declaration, fun_prototype;
-non terminal Exp type_specifier, params, param;
-
+non terminal DecList program, declaration_list;
+non terminal ExpList args, arg_list, statement_list;
+non terminal Dec declaration, fun_declaration, fun_prototype;
+non terminal VarDec var_declaration, param;
+non terminal VarDecList local_declarations, param_list, params;
 non terminal Exp compound_stmt, statement, expression_stmt;
 non terminal Exp selection_stmt, iteration_stmt, return_stmt;
-
-non terminal Exp expression, var;
-non terminal Exp call, args;
+non terminal Exp expression;
+non terminal Var var;
+non terminal Exp call;
+non terminal NameTy type_specifier;
 
 precedence nonassoc IFX;
 precedence nonassoc ELSE;
@@ -110,53 +105,215 @@ precedence right UMINUS;
    
 start with program;
 
-program ::= declaration_list;
+program
+  ::= declaration_list:dl
+      {: RESULT = dl; :}
+  ;
 
-declaration_list ::= declaration_list declaration | declaration;
 
-declaration ::= var_declaration | fun_declaration | fun_prototype;
+declaration_list
+  ::= declaration_list:dl declaration:d
+      {: RESULT = new DecList(((Absyn)d).row, ((Absyn)d).col, d, dl); :}
+  | declaration:d
+      {: RESULT = new DecList(((Absyn)d).row, ((Absyn)d).col, d, null); :}
+  ;
 
-var_declaration ::= type_specifier ID SEMI | type_specifier ID LBRACK NUM RBRACK SEMI;
 
-type_specifier ::= BOOL | INT | VOID;
+declaration
+  ::= var_declaration:vd
+      {: RESULT = vd; :}
+  | fun_declaration:fd
+      {: RESULT = fd; :}
+  | fun_prototype:fp
+      {: RESULT = fp; :}
+  ;
 
-fun_declaration ::= type_specifier ID LPAREN params RPAREN compound_stmt;
+var_declaration
+  ::= type_specifier:t ID:id SEMI
+      {: RESULT = new SimpleDec(((NameTy)t).row, ((NameTy)t).col, t, id); :}
+  | type_specifier:t ID:id LBRACK NUM:n RBRACK SEMI
+      {: RESULT = new ArrayDec(((NameTy)t).row, ((NameTy)t).col, t, id, Integer.parseInt(n)); :}
+  ;
 
-fun_prototype ::= type_specifier ID LPAREN params RPAREN SEMI;
 
-params ::= param_list | VOID;
+type_specifier
+  ::= BOOL:b
+      {: RESULT = new NameTy(bleft, bright, NameTy.BOOL); :}
+  | INT:i
+      {: RESULT = new NameTy(ileft, iright, NameTy.INT); :}
+  | VOID:v
+      {: RESULT = new NameTy(vleft, vright, NameTy.VOID); :}
+  ;
 
-param_list ::= param_list COMMA param | param;
+fun_declaration
+  ::= type_specifier:t ID:id LPAREN params:ps RPAREN compound_stmt:body
+      {: RESULT = new FunctionDec(((NameTy)t).row, ((NameTy)t).col, t, id, ps, body); :}
+  ;
 
-param ::= type_specifier ID | type_specifier ID LBRACK RBRACK;
+fun_prototype
+  ::= type_specifier:t ID:id LPAREN params:ps RPAREN SEMI:s
+      {: RESULT = new FunctionDec(((NameTy)t).row, ((NameTy)t).col, t, id, ps, new NilExp(((Symbol)s).left, ((Symbol)s).right)); :}
+  ;
 
-compound_stmt ::= LBRACE local_declarations statement_list RBRACE;
+params
+  ::= param_list:pl
+      {: RESULT = pl; :}
+  | VOID:v
+      {: RESULT = null; :}
+  ;
 
-local_declarations ::= local_declarations var_declaration | ;
+param_list
+  ::= param_list:pl COMMA param:p
+      {: RESULT = new VarDecList(((Absyn)p).row, ((Absyn)p).col, p, pl); :}
+  | param:p
+      {: RESULT = new VarDecList(((Absyn)p).row, ((Absyn)p).col, p, null); :}
+  ;
 
-statement_list ::= statement_list statement | ;
+param
+  ::= type_specifier:t ID:id
+      {: RESULT = new SimpleDec(((NameTy)t).row, ((NameTy)t).col, t, id); :}
+  | type_specifier:t ID:id LBRACK RBRACK
+      /* array parameter: size doesn't exist here; using 0 is common */
+      {: RESULT = new ArrayDec(((NameTy)t).row, ((NameTy)t).col, t, id, 0); :}
+  ;
 
-statement ::= expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
+compound_stmt
+  ::= LBRACE:l local_declarations:lds statement_list:sts RBRACE
+      {: RESULT = new CompoundExp(lleft, lright, lds, sts); :}
+  ;
 
-expression_stmt ::= expression SEMI | SEMI;
+local_declarations
+  ::= local_declarations:lds var_declaration:vd
+      {: RESULT = new VarDecList(((Absyn)vd).row, ((Absyn)vd).col, vd, lds); :}
+  |
+      {: RESULT = null; :}
+  ;
 
-selection_stmt ::= IF LPAREN expression RPAREN statement %prec IFX | IF LPAREN expression RPAREN statement ELSE statement;
 
-iteration_stmt ::= WHILE LPAREN expression RPAREN statement;
+statement_list
+  ::= statement_list:sts statement:s
+      {: RESULT = new ExpList(((Absyn)s).row, ((Absyn)s).col, s, sts); :}
+  |
+      {: RESULT = null; :}
+  ;
 
-return_stmt ::= RETURN expression SEMI | RETURN SEMI;
+statement
+  ::= expression_stmt:es
+      {: RESULT = es; :}
+  | compound_stmt:cs
+      {: RESULT = cs; :}
+  | selection_stmt:ss
+      {: RESULT = ss; :}
+  | iteration_stmt:is
+      {: RESULT = is; :}
+  | return_stmt:rs
+      {: RESULT = rs; :}
+  ;
 
-expression ::= var ASSIGN expression | expression OR expression | expression AND expression
-      | TILDE expression | expression LT expression | expression LE expression
-      | expression GT expression | expression GE expression | expression EQ expression
-      | expression NE expression | expression PLUS expression | expression MINUS expression
-      | expression TIMES expression | expression OVER expression | MINUS expression %prec UMINUS
-      | LPAREN expression RPAREN | var | call | NUM | TRUE | FALSE;
 
-var ::= ID | ID LBRACK expression RBRACK;
+expression_stmt
+  ::= expression:e SEMI
+      {: RESULT = e; :}
+  | SEMI:s
+      {: RESULT = new NilExp(((Symbol)s).left, ((Symbol)s).right); :}
+  ;
 
-call ::= ID LPAREN args RPAREN;
+selection_stmt
+  ::= IF:i LPAREN expression:test RPAREN statement:thenp
+      {: RESULT = new IfExp(((Symbol)i).left, ((Symbol)i).right, test, thenp, new NilExp(((Symbol)i).left, ((Symbol)i).right)); :}
+      %prec IFX
+  | IF:i LPAREN expression:test RPAREN statement:thenp ELSE statement:elsep
+      {: RESULT = new IfExp(((Symbol)i).left, ((Symbol)i).right, test, thenp, elsep); :}
+  ;
 
-args ::= arg_list | ;
+iteration_stmt
+  ::= WHILE:w LPAREN expression:test RPAREN statement:body
+      {: RESULT = new WhileExp(wleft, wright, test, body); :}
+  ;
+  
+return_stmt
+  ::= RETURN:r expression:e SEMI
+      {: RESULT = new ReturnExp(((Symbol)r).left, ((Symbol)r).right, e); :}
+  | RETURN:r SEMI
+      {: RESULT = new ReturnExp(((Symbol)r).left, ((Symbol)r).right, new NilExp(((Symbol)r).left, ((Symbol)r).right)); :}
+  ;
 
-arg_list ::= arg_list COMMA expression | expression;
+
+expression
+  ::= var:v ASSIGN expression:e
+      {: RESULT = new AssignExp(((Absyn)v).row, ((Absyn)v).col, new VarExp(((Absyn)v).row, ((Absyn)v).col, v), e); :}
+
+  | expression:e1 OR expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.OR, e2); :}
+  | expression:e1 AND expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.AND, e2); :}
+  | TILDE:t expression:e
+      {: RESULT = new OpExp(((Symbol)t).left, ((Symbol)t).right, null, OpExp.NOT, e); :}
+
+  | expression:e1 LT expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.LT, e2); :}
+  | expression:e1 LE expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.LE, e2); :}
+  | expression:e1 GT expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.GT, e2); :}
+  | expression:e1 GE expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.GE, e2); :}
+  | expression:e1 EQ expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.EQ, e2); :}
+  | expression:e1 NE expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.NE, e2); :}
+
+  | expression:e1 PLUS expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.PLUS, e2); :}
+  | expression:e1 MINUS expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.MINUS, e2); :}
+  | expression:e1 TIMES expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.MUL, e2); :}
+  | expression:e1 OVER expression:e2
+      {: RESULT = new OpExp(((Absyn)e1).row, ((Absyn)e1).col, e1, OpExp.DIV, e2); :}
+
+  | MINUS:m expression:e
+      {: RESULT = new OpExp(((Symbol)m).left, ((Symbol)m).right, null, OpExp.UMINUS, e); :}
+      %prec UMINUS
+
+  | LPAREN expression:e RPAREN
+      {: RESULT = e; :}
+
+  | var:v
+      {: RESULT = new VarExp(((Absyn)v).row, ((Absyn)v).col, v); :}
+  | call:c
+      {: RESULT = c; :}
+  | NUM:n
+      {: RESULT = new IntExp(nleft, nright, Integer.parseInt(n)); :}
+  | TRUE:t
+      {: RESULT = new BoolExp(((Symbol)t).left, ((Symbol)t).right, true); :}
+  | FALSE:f
+      {: RESULT = new BoolExp(((Symbol)f).left, ((Symbol)f).right, false); :}
+  ;
+
+var
+  ::= ID:id
+      {: RESULT = new SimpleVar(idleft, idright, id); :}
+  | ID:id LBRACK expression:e RBRACK
+      {: RESULT = new IndexVar(idleft, idright, id, e); :}
+  ;
+
+call
+  ::= ID:id LPAREN args:as RPAREN
+      {: RESULT = new CallExp(idleft, idright, id, as); :}
+  ;
+
+
+args
+  ::= arg_list:al
+      {: RESULT = al; :}
+  |
+      {: RESULT = null; :}
+  ;
+
+arg_list
+  ::= arg_list:al COMMA expression:e
+      {: RESULT = new ExpList(((Absyn)e).row, ((Absyn)e).col, e, al); :}
+  | expression:e
+      {: RESULT = new ExpList(((Absyn)e).row, ((Absyn)e).col, e, null); :}
+  ;

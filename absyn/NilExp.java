@@ -1,12 +1,9 @@
 package absyn;
 
-public class IntExp extends Exp {
-  public int value;
-
-  public IntExp(int row, int col, int value) {
+public class NilExp extends Exp {
+  public NilExp(int row, int col) {
     this.row = row;
     this.col = col;
-    this.value = value;
   }
 
   @Override
